@@ -15,6 +15,15 @@
           active-class="bg-green-700 ">
           {{ button.name }}
         </router-link>
+
+        <button
+          v-if="isLoggedIn"
+          type="button"
+          class="w-28 py-2 bg-red-500 text-stone-50 font-medium rounded-xl shadow-md hover:shadow-lg hover:bg-red-600 transition text-center"
+          @click="handleLogout"
+        >
+          logout
+        </button>
       </aside>
 
       <!-- Main content -->
@@ -26,11 +35,39 @@
 </template>
 
 <script setup>
+import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { getCurrentUser, logout } from '../../api/auth.js'
+
+const router = useRouter()
+const user = ref(null)
+
 const buttons = [
   { name: 'play', path: '/play' },
   { name: 'puzzles', path: '/puzzles' },
   { name: 'learn', path: '/learn' },
+  { name: 'signup', path: '/signup' },
+  { name: 'login', path: '/login'},
 ]
+
+const isLoggedIn = computed(() => Boolean(user.value))
+
+async function handleLogout() {
+  try {
+    await logout()
+  } finally {
+    user.value = null
+    router.push('/login')
+  }
+}
+
+onMounted(async () => {
+  try {
+    user.value = await getCurrentUser()
+  } catch {
+    user.value = null
+  }
+})
 defineOptions({
   name: 'NavigationBar',
 })

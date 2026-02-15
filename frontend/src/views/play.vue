@@ -4,11 +4,25 @@
       <div
         v-for="square in squares"
         :key="square.key"
-        class="flex aspect-square items-center justify-center select-none"
+        class="flex aspect-square items-center justify-center select-none relative"
         :class="square.color"
         @click="onSquareClick(square.square)"
       >
-        <img v-if="square.piece" class="h-3/4 w-3/4 object-contain pointer-events-none" :src="square.piece" alt="" />
+        <img 
+          v-if="square.piece" 
+          class="h-3/4 w-3/4 object-contain pointer-events-none transition-all" 
+          :class="{
+             'brightness-150 scale-110': selected === square.square ,
+              
+
+             }"
+          :src="square.piece" 
+          alt="" 
+        />
+        <div
+          v-if="isValidMove(square.square)"
+          class="absolute w-4 h-4 bg-white rounded-full opacity-80 pointer-events-none"
+        ></div>
       </div>
     </div>
     <div class="mx-auto mt-3 flex w-full max-w-[640px] items-center justify-between text-sm text-stone-50">
@@ -74,6 +88,11 @@ const squares = computed(() => {
   )
 })
 
+const validMoves = computed(() => {
+  if (!selected.value) return []
+  return getLegalMovesForSquare(selected.value, board.value).map(move => move.square)
+})
+
 const status = computed(() => {
   const inCheck = isKingInCheck(turn.value, board.value)
   const moves = getAllLegalMoves(turn.value, board.value)
@@ -82,6 +101,10 @@ const status = computed(() => {
   if (inCheck) return 'Check'
   return `${turn.value === 'w' ? 'White' : 'Black'} turn`
 })
+
+function isValidMove(square) {
+  return validMoves.value.includes(square)
+}
 
 function onSquareClick(square) {
   const from = selected.value
@@ -372,6 +395,9 @@ function applyMove(fromSquare, toSquare) {
   const { row: fromRow, col: fromCol } = getSquareCoords(fromSquare)
   const { row: toRow, col: toCol } = getSquareCoords(toSquare)
   const movingPiece = board.value[fromRow][fromCol]
+  
+  console.log(`Move: ${movingPiece} from ${fromSquare} to ${toSquare}`)
+  
   const nextBoard = cloneBoard(board.value)
   const moveFlags = getPseudoMovesForSquare(fromRow, fromCol, movingPiece, board.value)
     .find((move) => move.row === toRow && move.col === toCol)?.flags || []
