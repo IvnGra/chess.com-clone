@@ -4,7 +4,9 @@
       <div class="flex flex-1">
       <aside class="w-48 bg-stone-900  flex flex-col items-center justify-start space-y-10 py-6">
         
-        <a href="/" class="w-28 py-2 bg-green-600 text-stone-50 font-medium rounded-xl shadow-md hover:shadow-lg hover:bg-green-700 transition text-center no-underline">logo</a>
+        <a  href='/' >
+          <img src="../../assets/logo.png" alt="Chess.ee Logo" class="h-12 w-auto mt-2">
+        </a>
         <router-link
           v-for="button in buttons"
           :key="button.name"
