@@ -6,5 +6,9 @@
 ## my chess.com clone will have a playable matches with bots (200, 500, 1000 elo), my chess.com clone will have a chess database where you can see you played games victories/loses/draws 
 
 # stack
-## for stack i will be using vue.js, tailwindcss, for backend i will use django and for a database mongoDB 
+## frontend - Vue 3, Vite, Tailwind CSS, Vue Router, chess.js
+## backend - Django, Django REST Framework, django-cors-headers
+## database - PostgreSQL
+## auth - Django session auth + CSRF
+## api - REST
 

@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 
@@ -32,6 +33,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     date_joined = models.DateTimeField(auto_now_add=True)
+    rating = models.IntegerField(default=1200)
+
 
     objects = UserManager()
 
@@ -41,3 +44,60 @@ class User(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         return self.email
 
+
+class Game(models.Model):
+    STATUS_CHOICES = [
+        ('waiting', 'Waiting'),
+        ('in_progress', 'In Progress'),
+        ('finished', 'Finished'),
+    ]
+
+    white_player = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name='white_games',
+        on_delete=models.CASCADE
+    )
+    black_player = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name='black_games',
+        on_delete=models.CASCADE
+    )
+
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES)
+    result = models.CharField(max_length=10, null=True, blank=True)
+    fen = models.TextField(blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+class Move(models.Model):
+    game = models.ForeignKey(
+        Game,
+        related_name='moves',
+        on_delete=models.CASCADE
+    )
+
+    move_number = models.IntegerField()
+    from_square = models.CharField(max_length=5)
+    to_square = models.CharField(max_length=5)
+    san = models.CharField(max_length=20)
+
+    played_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['move_number']
+
+class Message(models.Model):
+    game = models.ForeignKey(
+        Game,
+        related_name='messages',
+        on_delete=models.CASCADE
+    )
+
+    sender = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE
+    )
+
+    content = models.TextField()
+    sent_at = models.DateTimeField(auto_now_add=True)
