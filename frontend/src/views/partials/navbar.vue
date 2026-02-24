@@ -4,11 +4,11 @@
       <div class="flex flex-1">
       <aside class="w-48 bg-stone-900  flex flex-col items-center justify-start space-y-10 py-6">
         
-        <a  href='/' >
+        <router-link to="/">
           <img src="../../assets/logo.png" alt="Chess.ee Logo" class="h-12 w-auto mt-2">
-        </a>
+        </router-link>
         <router-link
-          v-for="button in buttons"
+          v-for="button in visibleButtons"
           :key="button.name"
           :to="button.path"
           class="w-28 py-2 bg-green-600 text-stone-50 font-medium rounded-xl shadow-md hover:shadow-lg hover:bg-green-700 transition text-center no-underline"
@@ -28,18 +28,21 @@
 
       <!-- Main content -->
       <main class="flex-1 bg-neutral-800 flex items-center justify-center">
-        <router-view />
+        <router-view v-slot="{ Component }">
+          <component :is="Component" v-if="Component" />
+        </router-view>
       </main>
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { getCurrentUser, logout } from '../../api/auth.js'
 
 const router = useRouter()
+const route = useRoute()
 const user = ref(null)
 
 const buttons = [
@@ -51,6 +54,22 @@ const buttons = [
 ]
 
 const isLoggedIn = computed(() => Boolean(user.value))
+const visibleButtons = computed(() =>
+  buttons.filter((button) => {
+    if (isLoggedIn.value && (button.path === '/signup' || button.path === '/login')) {
+      return false
+    }
+    return true
+  })
+)
+
+async function refreshUser() {
+  try {
+    user.value = await getCurrentUser()
+  } catch {
+    user.value = null
+  }
+}
 
 async function handleLogout() {
   try {
@@ -61,13 +80,14 @@ async function handleLogout() {
   }
 }
 
-onMounted(async () => {
-  try {
-    user.value = await getCurrentUser()
-  } catch {
-    user.value = null
+onMounted(refreshUser)
+
+watch(
+  () => route.fullPath,
+  () => {
+    refreshUser()
   }
-})
+)
 defineOptions({
   name: 'NavigationBar',
 })

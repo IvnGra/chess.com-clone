@@ -1,39 +1,45 @@
 <template>
-  <div class="px-4 py-6">
-    <div class="mx-auto grid w-full max-w-[640px] grid-cols-8 overflow-hidden border-2 border-neutral-900 flex flex-col items-center justify-start">
-      <div
-        v-for="square in squares"
-        :key="square.key"
-        class="flex aspect-square items-center justify-center select-none relative"
-        :class="square.color"
-        @click="onSquareClick(square.square)"
-      >
-        <img 
-          v-if="square.piece" 
-          class="h-3/4 w-3/4 object-contain pointer-events-none transition-all" 
-          :class="{
-             'brightness-150 scale-110': selected === square.square ,
-              
-
-             }"
-          :src="square.piece" 
-          alt="" 
-        />
+  <div class="px-6 py-10">
+    <div class="mx-auto flex w-full max-w-[1000px] items-start justify-center gap-6">
+      <div class="grid w-full max-w-[640px] grid-cols-8 overflow-hidden border-2 border-neutral-900">
         <div
-          v-if="isValidMove(square.square)"
-          class="absolute w-4 h-4 bg-white rounded-full opacity-80 pointer-events-none"
-        ></div>
+          v-for="square in squares"
+          :key="square.key"
+          class="flex aspect-square items-center justify-center select-none relative"
+          :class="square.color"
+          @click="onSquareClick(square.square)"
+        >
+          <img 
+            v-if="square.piece" 
+            class="h-3/4 w-3/4 object-contain pointer-events-none transition-all" 
+            :class="{
+               'brightness-150 scale-110': selected === square.square ,
+
+                
+
+               }"
+            :src="square.piece" 
+            alt="" 
+          />
+          <div
+            v-if="isValidMove(square.square)"
+            class="absolute w-5 h-5 bg-stone-600 rounded-full opacity-40 pointer-events-none"
+          ></div>
+        </div>
       </div>
-    </div>
-    <div class="mx-auto mt-3 flex w-full max-w-[640px] items-center justify-between text-sm text-stone-50">
-      {{ status }}
-      <button
-        class="rounded border text-stone-50 px-3 py-1 text-xs uppercase tracking-wide"
-        type="button"
-        @click="resetGame"
-      >
-        Reset
-      </button>
+
+      <aside class="w-100 bg-stone-900 flex flex-col items-center justify-center gap-6 py-6 px-4 text-stone-50">
+        <p class="text-sm text-center">{{ status }}</p>
+        <button
+          class="rounded border text-stone-50 px-3 py-1 text-xs uppercase tracking-wide"
+          type="button"
+          @click="resetGame"
+        >
+          Reset
+        </button>
+        <button class="rounded border text-stone-500">resign</button>
+        <button class="rounded border text-stone-500">undo</button>
+      </aside>
     </div>
   </div>
 </template>
@@ -52,6 +58,11 @@ import WQ from '../assets/wq.png'
 import BQ from '../assets/bq.png'
 import WK from '../assets/wk.png'
 import BK from '../assets/bk.png'
+import moveSoundSrc from '../assets/sounds/move.mp3'
+import captureSoundSrc from '../assets/sounds/capture.mp3'
+import castleSoundSrc from '../assets/sounds/castle.mp3'
+import illegalSoundSrc from '../assets/sounds/illegal.mp3'
+import checkSoundSrc from '../assets/sounds/check.mp3'
 
 const selected = ref(null)
 const turn = ref('w')
@@ -69,6 +80,16 @@ const pieceToChar = {
   wr: WR, br: BR,
   wq: WQ, bq: BQ,
   wk: WK, bk: BK
+}
+
+const soundMap = {
+  move: moveSoundSrc,
+  capture: captureSoundSrc,
+  'castle-k': castleSoundSrc,
+  'castle-q': castleSoundSrc,
+  illegal: illegalSoundSrc,
+  check: checkSoundSrc,
+  checkmate: checkSoundSrc,
 }
 
 const squares = computed(() => {
@@ -106,6 +127,12 @@ function isValidMove(square) {
   return validMoves.value.includes(square)
 }
 
+function makeSound(move) {
+  const src = soundMap[move] || soundMap.move
+  const audio = new Audio(src)
+  audio.play().catch(() => {})
+}
+
 function onSquareClick(square) {
   const from = selected.value
   const target = getSquarePiece(square)
@@ -124,12 +151,28 @@ function onSquareClick(square) {
   const isLegal = legal.some((move) => move.square === square)
 
   if (!isLegal) {
+    makeSound('illegal')
     if (target && target[0] === turn.value) selected.value = square
     else selected.value = null
     return
   }
 
-  applyMove(from, square)
+  const moveResult = applyMove(from, square)
+
+  if (moveResult.isCheckmate) {
+    makeSound('checkmate')
+  } else if (moveResult.isCheck) {
+    makeSound('check')
+  } else if (moveResult.moveFlags.includes('capture') || moveResult.moveFlags.includes('enpassant')) {
+    makeSound('capture')
+  } else if (moveResult.moveFlags.includes('castle-k')) {
+    makeSound('castle-k')
+  } else if (moveResult.moveFlags.includes('castle-q')) {
+    makeSound('castle-q')
+  } else {
+    makeSound('move')
+  }
+
   selected.value = null
 } // move piece if valid, otherwise select new piece if clicked on one
 
@@ -140,7 +183,7 @@ function resetGame() {
   enPassant.value = null
   castling.value = { w: { k: true, q: true }, b: { k: true, q: true } }
 }
-
+//board
 function createInitialBoard() {
   return [
     ['br','bn','bb','bq','bk','bb','bn','br'],
@@ -407,6 +450,16 @@ function applyMove(fromSquare, toSquare) {
 
   board.value = nextBoard
   turn.value = turn.value === 'w' ? 'b' : 'w'
+
+  const nextTurn = turn.value
+  const inCheck = isKingInCheck(nextTurn, board.value)
+  const legalMoves = getAllLegalMoves(nextTurn, board.value)
+
+  return {
+    moveFlags,
+    isCheck: inCheck,
+    isCheckmate: inCheck && legalMoves.length === 0,
+  }
 }
 
 function applyMoveOnBoard(move, nextBoard, moveData) {
@@ -469,6 +522,7 @@ function updateStateAfterMove(move, moveFlags, currentBoard) {
     if (opponent === 'b' && toRow === 0 && toCol === 7) castling.value.b.k = false
   }
 }
+
 defineOptions({
   name: 'PlayView',
 })
